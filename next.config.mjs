@@ -1,6 +1,45 @@
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
-/// <reference path="./.next/types/routes.d.ts" />
+import { imageHosts } from './image-hosts.config.mjs';
 
-// NOTE: This file should not be edited
-// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  productionBrowserSourceMaps: true,
+  distDir: process.env.DIST_DIR || '.next',
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  images: {
+    remotePatterns: imageHosts,
+    minimumCacheTTL: 60,
+    qualities: [75, 85, 100],
+  },
+  webpack(
+    config,
+    {
+      dev: dev
+    }
+  ) {
+    if (dev) {
+      config.module.rules.push({
+        test: /\.(jsx|tsx)$/,
+        exclude: [/node_modules/],
+        use: [{
+          loader: '@dhiwise/component-tagger/nextLoader',
+        }],
+      });
+      const ignoredPaths = (process.env.WATCH_IGNORED_PATHS || '')
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
+      config.watchOptions = {
+        ignored: ignoredPaths.length
+          ? ignoredPaths.map((p) => `**/${p.replace(/^\/+|\/+$/g, '')}/**`)
+          : undefined,
+      };
+    }
+    return config;
+  },
+};
+export default nextConfig;
